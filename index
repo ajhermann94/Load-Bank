@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPS Load Sequence Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>UPS Load Sequence Generator</h1>
+        <form id="configForm">
+            <label>Number of Main Lineups:</label>
+            <input type="number" id="numLineups" value="3" min="1"><br>
+            <label>Number of Reserve Lineups:</label>
+            <input type="number" id="numReserve" value="1" min="0"><br>
+            <label>STSs per Lineup:</label>
+            <input type="number" id="stsPerLineup" value="5" min="1"><br>
+            <label>Busways per STS:</label>
+            <input type="number" id="buswaysPerSTS" value="6" min="1"><br>
+            <label>UPS Capacity (kW):</label>
+            <input type="number" id="upsCapacity" value="2000" min="1"><br>
+            <label>STS Capacity (kW):</label>
+            <input type="number" id="stsCapacity" value="500" min="1"><br>
+            <label>Busway Capacity (kW):</label>
+            <input type="number" id="buswayCapacity" value="200" min="1"><br>
+            <label>Min Load (%):</label>
+            <input type="number" id="minLoad" value="25" min="0" max="100"><br>
+            <label>Max Load (%):</label>
+            <input type="number" id="maxLoad" value="100" min="0" max="100"><br>
+            <label>Phase Duration (hours):</label>
+            <input type="number" id="phaseHours" value="4" min="1"><br>
+            <button type="submit">Generate Sequence</button>
+        </form>
+        <div id="output"></div>
+        <button id="downloadBtn" style="display:none;" onclick="downloadCSV()">Download CSV</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
