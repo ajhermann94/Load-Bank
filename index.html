@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPS Burn-In Test Schedule</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>UPS Burn-In Test Schedule</h1>
+    
+    <form id="config-form">
+        <label>Number of UPS Line-ups:</label>
+        <input type="number" id="upsCount" value="4" min="1"><br>
+        <label>STS per UPS:</label>
+        <input type="number" id="stsPerUps" value="5" min="1"><br>
+        <label>Busways per PDU:</label>
+        <input type="number" id="buswaysPerPdu" value="4" min="1"><br>
+        <label>Test Duration (hours):</label>
+        <input type="number" id="testDurationHrs" value="4" min="1" step="0.5"><br>
+        <label>Busway Duration (minutes):</label>
+        <input type="number" id="buswayDurationMin" value="30" min="1"><br>
+        <label>UPS Capacity (kW):</label>
+        <input type="number" id="upsCapacity" value="2000" min="1"><br>
+        <label>STS Capacity (kW):</label>
+        <input type="number" id="stsCapacity" value="500" min="1"><br>
+        <label>Busway Capacity (kW):</label>
+        <input type="number" id="buswayCapacity" value="250" min="1"><br>
+        <label>Load Levels (e.g., "25%:500,50%:1000"):</label>
+        <input type="text" id="loadLevels" value="25%:500,50%:1000,100%:2000"><br>
+        <button type="submit">Generate Schedule</button>
+    </form>
+
+    <pre id="schedule-output">Enter configuration and click "Generate Schedule"...</pre>
+
+    <script>
+        function generateSchedule(upsCount, stsPerUps, buswaysPerPdu, testDurationHrs, buswayDurationMin, loadLevels, upsCapacity, stsCapacity, buswayCapacity) {
+            let schedule = [];
+            const startTime = new Date();
+            const formatter = { hour: '2-digit', minute: '2-digit', hour12: false };
+
+            schedule.push("UPS Burn-In Test Schedule");
+            schedule.push(`Start Time: ${startTime.toLocaleString()}`);
+
+            for (let ups = 1; ups <= upsCount; ups++) {
+                schedule.push(`\n=== UPS ${ups} Testing ===`);
+                let currentTime = new Date(startTime);
+
+                for (const [loadName, loadKw] of Object.entries(loadLevels)) {
+                    schedule.push(`\n${loadName} Load Test (${loadKw} kW) - ${testDurationHrs} Hours`);
+                    const stsCount = Math.ceil(loadKw / stsCapacity);
+                    const activeBusways = Math.ceil(loadKw / buswayCapacity);
+                    const totalMinutes = testDurationHrs * 60;
+                    const intervals = Math.ceil(totalMinutes / buswayDurationMin);
+
+                    for (let interval = 0; interval < intervals; interval++) {
+                        const startInterval = new Date(currentTime.getTime() + interval * buswayDurationMin * 60000);
+                        const endInterval = new Date(startInterval.getTime() + buswayDurationMin * 60000);
+
+                        const stsStart = (interval % stsPerUps) + 1;
+                        let activeSts = [stsStart];
+                        for (let j = 1; j < Math.min(stsCount, stsPerUps); j++) {
+                            activeSts.push((stsStart + j - 1) % stsPerUps + 1);
+                        }
+
+                        let buswayAssignments = [];
+                        let buswaysUsed = 0;
+                        for (const sts of activeSts) {
+                            const buswaysNeeded = Math.min(
+                                Math.floor(stsCapacity / buswayCapacity),
+                                activeBusways - buswaysUsed
+                            );
+                            const startBusway = (interval % buswaysPerPdu) + 1;
+                            const busways = Array.from(
+                                { length: buswaysNeeded },
+                                (_, k) => (startBusway + k - 1) % buswaysPerPdu + 1
+                            );
+                            buswayAssignments.push(`STS ${sts}: Busways ${busways} (${busways.length * buswayCapacity} kW)`);
+                            buswaysUsed += buswaysNeeded;
+                        }
+
+                        schedule.push(`${startInterval.toLocaleTimeString([], formatter)} - ${endInterval.toLocaleTimeString([], formatter)}:`);
+                        schedule.push(...buswayAssignments);
+                        const totalLoad = buswaysUsed * buswayCapacity;
+                        schedule.push(`Total Load: ${totalLoad} kW`);
+                    }
+
+                    currentTime = new Date(currentTime.getTime() + (testDurationHrs + 1) * 60 * 60000);
+                    schedule.push(`Cooldown until: ${currentTime.toLocaleTimeString([], formatter)}`);
+                }
+            }
+            return schedule;
+        }
+
+        document.getElementById('config-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const upsCount = parseInt(document.getElementById('upsCount').value);
+            const stsPerUps = parseInt(document.getElementById('stsPerUps').value);
+            const buswaysPerPdu = parseInt(document.getElementById('buswaysPerPdu').value);
+            const testDurationHrs = parseFloat(document.getElementById('testDurationHrs').value);
+            const buswayDurationMin = parseInt(document.getElementById('buswayDurationMin').value);
+            const upsCapacity = parseInt(document.getElementById('upsCapacity').value);
+            const stsCapacity = parseInt(document.getElementById('stsCapacity').value);
+            const buswayCapacity = parseInt(document.getElementById('buswayCapacity').value);
+            const loadLevelsStr = document.getElementById('loadLevels').value;
+
+            const loadLevels = {};
+            loadLevelsStr.split(',').forEach(pair => {
+                const [name, kw] = pair.split(':');
+                loadLevels[name] = parseInt(kw);
+            });
+
+            const schedule = generateSchedule(
+                upsCount, stsPerUps, buswaysPerPdu, testDurationHrs, buswayDurationMin,
+                loadLevels, upsCapacity, stsCapacity, buswayCapacity
+            );
+            document.getElementById('schedule-output').textContent = schedule.join('\n');
+        });
+    </script>
+</body>
+</html>
